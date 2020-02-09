@@ -10,6 +10,7 @@
 
 using System;
 using System.Linq;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Piranha.AspNetCore.Identity.Models;
@@ -20,43 +21,46 @@ namespace Piranha.AspNetCore.Identity.Controllers
     [Area("Manager")]
     public class RoleController : ManagerController
     {
-        private readonly IDb _db;
+        private readonly IIdentityService _service;
 
-        public RoleController(IDb db)
+        public RoleController(IIdentityService service)
         {
-            _db = db;
+            _service = service;
         }
 
         [Route("/manager/roles")]
         [Authorize(Policy = Permissions.Roles)]
-        public IActionResult List()
+        public async Task<IActionResult> List()
         {
-            return View(RoleListModel.Get(_db));
+            var model = await _service.GetRoleListAsync(HttpContext.RequestAborted);
+            return View(model);
         }
 
-        [Route("/manager/role/{id:Guid}")]
+        [Route("/manager/role/{id}")]
         [Authorize(Policy = Permissions.RolesEdit)]
-        public IActionResult Edit(Guid id)
+        public async Task<IActionResult> Edit(string id)
         {
-            return View("Edit", RoleEditModel.GetById(_db, id));
+            var model = await _service.GetRoleByIdAsync(id, HttpContext.RequestAborted);
+            return View("Edit", model);
         }
 
         [Route("/manager/role")]
         [Authorize(Policy = Permissions.RolesAdd)]
         public IActionResult Add()
         {
-            return View("Edit", RoleEditModel.Create());
+            return View("Edit", _service.CreateRole());
         }
 
         [HttpPost]
         [Route("/manager/role/save")]
         [Authorize(Policy = Permissions.RolesSave)]
-        public IActionResult Save(RoleEditModel model)
+        public async Task<IActionResult> Save(RoleEditModel model)
         {
-            if (model.Save(_db))
+            var result = await _service.SaveRoleAsync(model, HttpContext.RequestAborted);
+            if (result)
             {
                 SuccessMessage("The role has been saved.");
-                return RedirectToAction("Edit", new {id = model.Role.Id});
+                return RedirectToAction("Edit", new { id = model.Id });
             }
 
             ErrorMessage("The role could not be saved.", false);
@@ -65,16 +69,11 @@ namespace Piranha.AspNetCore.Identity.Controllers
 
         [Route("/manager/role/delete")]
         [Authorize(Policy = Permissions.RolesDelete)]
-        public IActionResult Delete(Guid id)
+        public async Task<IActionResult> Delete(string id)
         {
-            var role = _db.Roles
-                .FirstOrDefault(r => r.Id == id);
-
-            if (role != null)
+            var result = await _service.DeleteRoleAsync(id, HttpContext.RequestAborted);
+            if (result)
             {
-                _db.Roles.Remove(role);
-                _db.SaveChanges();
-
                 SuccessMessage("The role has been deleted.");
                 return RedirectToAction("List");
             }

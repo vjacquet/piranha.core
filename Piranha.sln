@@ -88,6 +88,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Piranha.Data.EF.SQLite", "d
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Piranha.Data.EF.SQLServer", "data\Piranha.Data.EF.SQLServer\Piranha.Data.EF.SQLServer.csproj", "{538596A9-6085-4535-96ED-508A0C30DF32}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "IdentityCoop", "examples\IdentityCoop\IdentityCoop.csproj", "{810AEB72-D350-4111-9F5C-4DBE0F69F652}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -198,6 +200,10 @@ Global
 		{538596A9-6085-4535-96ED-508A0C30DF32}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{538596A9-6085-4535-96ED-508A0C30DF32}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{538596A9-6085-4535-96ED-508A0C30DF32}.Release|Any CPU.Build.0 = Release|Any CPU
+		{810AEB72-D350-4111-9F5C-4DBE0F69F652}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{810AEB72-D350-4111-9F5C-4DBE0F69F652}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{810AEB72-D350-4111-9F5C-4DBE0F69F652}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{810AEB72-D350-4111-9F5C-4DBE0F69F652}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -229,6 +235,7 @@ Global
 		{497CBEC0-6D71-43ED-9E8C-6A0DB605AA47} = {DE1913AC-4AA3-4F66-83F1-615710D8367B}
 		{A9C23685-EC2E-4C57-90EB-069054796F5C} = {DCC52317-BC88-4F0A-923F-C9D9F6D952ED}
 		{538596A9-6085-4535-96ED-508A0C30DF32} = {DCC52317-BC88-4F0A-923F-C9D9F6D952ED}
+		{810AEB72-D350-4111-9F5C-4DBE0F69F652} = {A82A5922-BF05-4DD7-A2C1-DD22F1AD6A57}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {CF88AA05-D127-4707-8214-A230F0DA569B}

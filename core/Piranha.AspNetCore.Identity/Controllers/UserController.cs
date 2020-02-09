@@ -30,20 +30,23 @@ namespace Piranha.AspNetCore.Identity.Controllers
     [Area("Manager")]
     public class UserController : ManagerController
     {
-        private readonly IDb _db;
-        private readonly UserManager<User> _userManager;
+        private readonly string _duplicateUserNameErrorCode;
+        private readonly string _duplicateEmailErrorCode;
+
+        private readonly IIdentityService _service;
         private readonly ManagerLocalizer _localizer;
 
         /// <summary>
         /// Default constructor.
         /// </summary>
-        /// <param name="db">The current db context</param>
-        /// <param name="userManager">The current user manager</param>
-        public UserController(IDb db, UserManager<User> userManager, ManagerLocalizer localizer)
+        /// <param name="service">The identity service</param>
+        public UserController(IIdentityService service, IdentityErrorDescriber identityErrorDescriber, ManagerLocalizer localizer)
         {
-            _db = db;
-            _userManager = userManager;
+            _service = service;
             _localizer = localizer;
+
+            _duplicateUserNameErrorCode = identityErrorDescriber.DuplicateUserName("").Code;
+            _duplicateEmailErrorCode = identityErrorDescriber.DuplicateEmail("").Code;
         }
 
         /// <summary>
@@ -61,33 +64,33 @@ namespace Piranha.AspNetCore.Identity.Controllers
         /// </summary>
         [Route("/manager/users/list")]
         [Authorize(Policy = Permissions.Users)]
-        public UserListModel Get()
+        public async Task<UserListModel> Get()
         {
-            return UserListModel.Get(_db);
+            var model = await _service.GetUserListAsync(HttpContext.RequestAborted);
+            return model;
         }
 
         /// <summary>
         /// Gets the edit view for an existing user.
         /// </summary>
         /// <param name="id">The user id</param>
-        [Route("/manager/user/{id:Guid?}")]
+        [Route("/manager/user/{id?}")]
         [Authorize(Policy = Permissions.UsersEdit)]
-        public IActionResult Edit(Guid id)
+        public IActionResult Edit(string id)
         {
-            return View(id);
-            //return View(UserEditModel.GetById(_db, id));
+            return View((object)id);
         }
 
         /// <summary>
         /// Gets the edit view for an existing user.
         /// </summary>
         /// <param name="id">The user id</param>
-        [Route("/manager/user/edit/{id:Guid}")]
+        [Route("/manager/user/edit/{id}")]
         [Authorize(Policy = Permissions.UsersEdit)]
-        public UserEditModel Get(Guid id)
+        public async Task<UserEditModel> Get(string id)
         {
-            return UserEditModel.GetById(_db, id);
-            //return View(UserEditModel.GetById(_db, id));
+            var model = await _service.GetUserByIdAsync(id, HttpContext.RequestAborted);
+            return model;
         }
 
         /// <summary>
@@ -97,8 +100,8 @@ namespace Piranha.AspNetCore.Identity.Controllers
         [Authorize(Policy = Permissions.UsersEdit)]
         public UserEditModel Add()
         {
-            return UserEditModel.Create(_db);
-            //return View("Edit", UserEditModel.Create(_db));
+            var model = _service.CreateUser();
+            return model;
         }
 
         /// <summary>
@@ -110,27 +113,22 @@ namespace Piranha.AspNetCore.Identity.Controllers
         [Authorize(Policy = Permissions.UsersSave)]
         public async Task<IActionResult> Save([FromBody] UserEditModel model)
         {
-            // Refresh roles in the model if validation fails
-            //var temp = UserEditModel.Create(_db);
-            //model.Roles = temp.Roles;
-
-            if(model.User == null)
+            if (model.UserName == null)
             {
                 return BadRequest(GetErrorMessage(_localizer.Security["The user could not be found."]));
             }
 
-            
+            try
+            {
+                var userId = model.Id;
+                var isNew = string.IsNullOrEmpty(userId);
 
-            try { 
-                var userId = model.User.Id;
-                var isNew = userId == Guid.Empty;
-
-                if (string.IsNullOrWhiteSpace(model.User.UserName))
+                if (string.IsNullOrWhiteSpace(model.UserName))
                 {
                     return BadRequest(GetErrorMessage(_localizer.General["Username is mandatory."]));
                 }
 
-                if (string.IsNullOrWhiteSpace(model.User.Email))
+                if (string.IsNullOrWhiteSpace(model.Email))
                 {
                     return BadRequest(GetErrorMessage(_localizer.General["Email address is mandatory."]));
                 }
@@ -140,50 +138,31 @@ namespace Piranha.AspNetCore.Identity.Controllers
                     return BadRequest(GetErrorMessage(string.Format("{0} {1} - {2}", _localizer.Security["The new passwords does not match."], model.Password, model.PasswordConfirm)));
                 }
 
-                if (model.User.Id == Guid.Empty && string.IsNullOrWhiteSpace(model.Password))
+                if (isNew && string.IsNullOrWhiteSpace(model.Password))
                 {
                     return BadRequest(GetErrorMessage(_localizer.Security["Password is mandatory when creating a new user."]));
                 }
 
-                
-
-                if (!string.IsNullOrWhiteSpace(model.Password) && _userManager.PasswordValidators.Count > 0)
+                var result = await _service.SaveUserAsync(model, HttpContext.RequestAborted);
+                if (result.Succeeded)
                 {
-                    var errors = new List<string>();
-                    foreach (var validator in _userManager.PasswordValidators)
-                    {
-                        var errorResult = await validator.ValidateAsync(_userManager, model.User, model.Password);
-                        if (!errorResult.Succeeded)
-                            errors.AddRange(errorResult.Errors.Select(msg => msg.Description));
-                        if (errors.Count > 0)
-                        {
-                            return BadRequest(GetErrorMessage(string.Join("<br />", errors)));
-                        }
-                    }
+                    return Ok(await Get(model.Id));
                 }
-
-                //check username
-                if (await _db.Users.CountAsync(u => u.UserName.ToLower().Trim() == model.User.UserName.ToLower().Trim() && u.Id != userId) > 0)
+                else if (IsDuplicateUserName(result.Errors))
                 {
                     return BadRequest(GetErrorMessage(_localizer.Security["Username is used by another user."]));
                 }
-
-                //check email
-                if (await _db.Users.CountAsync(u => u.Email.ToLower().Trim() == model.User.Email.ToLower().Trim() && u.Id != userId) > 0)
+                else if (IsDuplicateEmail(result.Errors))
                 {
                     return BadRequest(GetErrorMessage(_localizer.Security["Email address is used by another user."]));
                 }
-
-                var result = await model.Save(_userManager);
-                if (result.Succeeded)
+                else
                 {
-                    return Ok(Get(model.User.Id));
+                    var errorMessages = new List<string>();
+                    errorMessages.AddRange(result.Errors.Select(msg => msg.Description));
+
+                    return BadRequest(GetErrorMessage(_localizer.Security["The user could not be saved."] + "<br/><br/>" + string.Join("<br />", errorMessages)));
                 }
-
-                var errorMessages = new List<string>();
-                errorMessages.AddRange(result.Errors.Select(msg => msg.Description));
-
-                return BadRequest(GetErrorMessage(_localizer.Security["The user could not be saved."] + "<br/><br/>" + string.Join("<br />", errorMessages)));
             }
             catch (Exception ex)
             {
@@ -191,30 +170,34 @@ namespace Piranha.AspNetCore.Identity.Controllers
             }
         }
 
+        bool IsDuplicateUserName(IEnumerable<IdentityError> errors)
+        {
+            return errors.Any(e => e.Code == _duplicateUserNameErrorCode);
+        }
+
+        bool IsDuplicateEmail(IEnumerable<IdentityError> errors)
+        {
+            return errors.Any(e => e.Code == _duplicateEmailErrorCode);
+        }
+
         /// <summary>
         /// Deletes the user with the given id.
         /// </summary>
         /// <param name="id">The user id</param>
-        [Route("/manager/user/delete/{id:Guid}")]
+        [Route("/manager/user/delete/{id}")]
         [Authorize(Policy = Permissions.UsersSave)]
-        public async Task<IActionResult> Delete(Guid id)
+        public async Task<IActionResult> Delete(string id)
         {
-            var user = _db.Users.FirstOrDefault(u => u.Id == id);
-
-            var currentUser = await _userManager.GetUserAsync(HttpContext.User);
-            if (currentUser != null && user.Id == currentUser.Id)
+            var currentUserId = _service.GetUserId(HttpContext.User);
+            if (id == currentUserId)
             {
                 return BadRequest(GetErrorMessage(_localizer.Security["Can't delete yourself."]));
             }
 
-            if (user != null)
+            if (await _service.DeleteUserAsync(id, HttpContext.RequestAborted))
             {
-                _db.Users.Remove(user);
-                _db.SaveChanges();
-
                 return Ok(GetSuccessMessage(_localizer.Security["The user has been deleted."]));
             }
-
 
             return NotFound(GetErrorMessage(_localizer.Security["The user could not be found."]));
         }
@@ -226,7 +209,7 @@ namespace Piranha.AspNetCore.Identity.Controllers
 
         private AliasListModel GetErrorMessage(string errorMessage)
         {
-            return GetMessage(!string.IsNullOrWhiteSpace(errorMessage) ? errorMessage :  _localizer.General["An error occurred"], StatusMessage.Error);
+            return GetMessage(!string.IsNullOrWhiteSpace(errorMessage) ? errorMessage : _localizer.General["An error occurred"], StatusMessage.Error);
         }
 
         private AliasListModel GetMessage(string message, string type)

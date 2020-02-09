@@ -36,7 +36,7 @@
             <div class="top-nav">
                 @if ((await Auth.AuthorizeAsync(User, Piranha.AspNetCore.Identity.Permissions.UsersAdd)).Succeeded)
                 {
-                    <a href="@Url.Action("Edit", Guid.Empty)" class="btn btn-primary btn-labeled">
+                    <a asp-action="Edit" asp-route-id="" class="btn btn-primary btn-labeled">
                         <i class="fas fa-plus"></i>@Localizer.General["Add"]
                     </a>
                 }

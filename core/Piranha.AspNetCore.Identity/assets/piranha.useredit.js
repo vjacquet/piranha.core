@@ -13,7 +13,7 @@ piranha.useredit= new Vue({
     methods: {
         bind: function (result) {
             this.userModel = result;
-            this.isNew = result.user.id === "00000000-0000-0000-0000-000000000000";
+            this.isNew = !result.id;
         },
         load: function (id, isNew) {
             var self = this;

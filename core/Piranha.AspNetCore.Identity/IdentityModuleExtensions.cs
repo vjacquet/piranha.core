@@ -10,6 +10,7 @@
 
 using System;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -25,6 +26,71 @@ using Module = Piranha.AspNetCore.Identity.Module;
 
 public static class IdentityModuleExtensions
 {
+    private static void ConfigureAuthorization(AuthorizationOptions options)
+    {
+        // Role policies
+        options.AddPolicy(Permissions.Roles, policy =>
+        {
+            policy.RequireClaim(Permission.Admin, Permission.Admin);
+            policy.RequireClaim(Permissions.Roles, Permissions.Roles);
+        });
+        options.AddPolicy(Permissions.RolesAdd, policy =>
+        {
+            policy.RequireClaim(Permission.Admin, Permission.Admin);
+            policy.RequireClaim(Permissions.Roles, Permissions.Roles);
+            policy.RequireClaim(Permissions.RolesAdd, Permissions.RolesAdd);
+        });
+        options.AddPolicy(Permissions.RolesDelete, policy =>
+        {
+            policy.RequireClaim(Permission.Admin, Permission.Admin);
+            policy.RequireClaim(Permissions.Roles, Permissions.Roles);
+            policy.RequireClaim(Permissions.RolesDelete, Permissions.RolesDelete);
+        });
+        options.AddPolicy(Permissions.RolesEdit, policy =>
+        {
+            policy.RequireClaim(Permission.Admin, Permission.Admin);
+            policy.RequireClaim(Permissions.Roles, Permissions.Roles);
+            policy.RequireClaim(Permissions.RolesEdit, Permissions.RolesEdit);
+        });
+        options.AddPolicy(Permissions.RolesSave, policy =>
+        {
+            policy.RequireClaim(Permission.Admin, Permission.Admin);
+            policy.RequireClaim(Permissions.Roles, Permissions.Roles);
+            policy.RequireClaim(Permissions.RolesSave, Permissions.RolesSave);
+        });
+
+        // User policies
+        options.AddPolicy(Permissions.Users, policy =>
+        {
+            policy.RequireClaim(Permission.Admin, Permission.Admin);
+            policy.RequireClaim(Permissions.Users, Permissions.Users);
+        });
+        options.AddPolicy(Permissions.UsersAdd, policy =>
+        {
+            policy.RequireClaim(Permission.Admin, Permission.Admin);
+            policy.RequireClaim(Permissions.Users, Permissions.Users);
+            policy.RequireClaim(Permissions.UsersAdd, Permissions.UsersAdd);
+        });
+        options.AddPolicy(Permissions.UsersDelete, policy =>
+        {
+            policy.RequireClaim(Permission.Admin, Permission.Admin);
+            policy.RequireClaim(Permissions.Users, Permissions.Users);
+            policy.RequireClaim(Permissions.UsersDelete, Permissions.UsersDelete);
+        });
+        options.AddPolicy(Permissions.UsersEdit, policy =>
+        {
+            policy.RequireClaim(Permission.Admin, Permission.Admin);
+            policy.RequireClaim(Permissions.Users, Permissions.Users);
+            policy.RequireClaim(Permissions.UsersEdit, Permissions.UsersEdit);
+        });
+        options.AddPolicy(Permissions.UsersSave, policy =>
+        {
+            policy.RequireClaim(Permission.Admin, Permission.Admin);
+            policy.RequireClaim(Permissions.Users, Permissions.Users);
+            policy.RequireClaim(Permissions.UsersSave, Permissions.UsersSave);
+        });
+    }
+
     /// <summary>
     /// Adds the Piranha identity module.
     /// </summary>
@@ -40,74 +106,12 @@ public static class IdentityModuleExtensions
         App.Modules.Register<Module>();
 
         // Setup authorization policies
-        services.AddAuthorization(o =>
-        {
-            // Role policies
-            o.AddPolicy(Permissions.Roles, policy =>
-            {
-                policy.RequireClaim(Permission.Admin, Permission.Admin);
-                policy.RequireClaim(Permissions.Roles, Permissions.Roles);
-            });
-            o.AddPolicy(Permissions.RolesAdd, policy =>
-            {
-                policy.RequireClaim(Permission.Admin, Permission.Admin);
-                policy.RequireClaim(Permissions.Roles, Permissions.Roles);
-                policy.RequireClaim(Permissions.RolesAdd, Permissions.RolesAdd);
-            });
-            o.AddPolicy(Permissions.RolesDelete, policy =>
-            {
-                policy.RequireClaim(Permission.Admin, Permission.Admin);
-                policy.RequireClaim(Permissions.Roles, Permissions.Roles);
-                policy.RequireClaim(Permissions.RolesDelete, Permissions.RolesDelete);
-            });
-            o.AddPolicy(Permissions.RolesEdit, policy =>
-            {
-                policy.RequireClaim(Permission.Admin, Permission.Admin);
-                policy.RequireClaim(Permissions.Roles, Permissions.Roles);
-                policy.RequireClaim(Permissions.RolesEdit, Permissions.RolesEdit);
-            });
-            o.AddPolicy(Permissions.RolesSave, policy =>
-            {
-                policy.RequireClaim(Permission.Admin, Permission.Admin);
-                policy.RequireClaim(Permissions.Roles, Permissions.Roles);
-                policy.RequireClaim(Permissions.RolesSave, Permissions.RolesSave);
-            });
-
-            // User policies
-            o.AddPolicy(Permissions.Users, policy =>
-            {
-                policy.RequireClaim(Permission.Admin, Permission.Admin);
-                policy.RequireClaim(Permissions.Users, Permissions.Users);
-            });
-            o.AddPolicy(Permissions.UsersAdd, policy =>
-            {
-                policy.RequireClaim(Permission.Admin, Permission.Admin);
-                policy.RequireClaim(Permissions.Users, Permissions.Users);
-                policy.RequireClaim(Permissions.UsersAdd, Permissions.UsersAdd);
-            });
-            o.AddPolicy(Permissions.UsersDelete, policy =>
-            {
-                policy.RequireClaim(Permission.Admin, Permission.Admin);
-                policy.RequireClaim(Permissions.Users, Permissions.Users);
-                policy.RequireClaim(Permissions.UsersDelete, Permissions.UsersDelete);
-            });
-            o.AddPolicy(Permissions.UsersEdit, policy =>
-            {
-                policy.RequireClaim(Permission.Admin, Permission.Admin);
-                policy.RequireClaim(Permissions.Users, Permissions.Users);
-                policy.RequireClaim(Permissions.UsersEdit, Permissions.UsersEdit);
-            });
-            o.AddPolicy(Permissions.UsersSave, policy =>
-            {
-                policy.RequireClaim(Permission.Admin, Permission.Admin);
-                policy.RequireClaim(Permissions.Users, Permissions.Users);
-                policy.RequireClaim(Permissions.UsersSave, Permissions.UsersSave);
-            });
-        });
+        services.AddAuthorization(ConfigureAuthorization);
 
         services.AddDbContext<T>(dbOptions);
         services.AddScoped<IDb, T>();
         services.AddScoped<T, T>();
+        services.AddScoped<IIdentityService, DbIdentityService>();
         services.AddIdentity<User, Role>()
             .AddEntityFrameworkStores<T>()
             .AddDefaultTokenProviders();
@@ -150,6 +154,59 @@ public static class IdentityModuleExtensions
     {
         return AddPiranhaIdentityWithSeed<T, DefaultIdentitySeed>(services, dbOptions, identityOptions, cookieOptions);
     }
+
+
+
+    /// <summary>
+    /// Adds the Piranha identity module.
+    /// </summary>
+    /// <param name="services">The current service collection</param>
+    /// <returns>The services</returns>
+    public static IServiceCollection AddPiranhaIdentity<TUser, TRole>(this IServiceCollection services)
+        where TUser : class
+        where TRole : class
+    {
+        // Add the identity module
+        App.Modules.Register<Module>();
+
+        // Setup authorization policies
+        services.AddAuthorization(ConfigureAuthorization);
+
+        services.AddScoped<IIdentityService, IdentityService<TUser, TRole>>();
+        services.AddScoped<ISecurity, IdentitySecurity<TUser>>();
+
+
+        return services;
+    }
+
+    /// <summary>
+    /// Adds the Piranha identity module.
+    /// </summary>
+    /// <param name="services">The current service collection</param>
+    /// <returns>The services</returns>
+    public static IServiceCollection AddPiranhaIdentityWithSeed<TUser, TRole, TSeed>(this IServiceCollection services)
+        where TUser : class
+        where TRole : class
+        where TSeed : class, IIdentitySeed
+    {
+        services = AddPiranhaIdentity<TUser, TRole>(services);
+        services.AddScoped<IIdentitySeed, TSeed>();
+
+        return services;
+    }
+
+    /// <summary>
+    /// Adds the Piranha identity module.
+    /// </summary>
+    /// <param name="services">The current service collection</param>
+    /// <returns>The services</returns>
+    public static IServiceCollection AddPiranhaIdentityWithSeed<TUser, TRole>(this IServiceCollection services)
+        where TUser : class
+        where TRole : class
+    {
+        return AddPiranhaIdentityWithSeed<TUser, TRole, DefaultIdentitySeed<TUser, TRole>>(services);
+    }
+
 
     /// <summary>
     /// Sets the default identity options if none was provided. Please note that
