@@ -40,6 +40,8 @@ namespace Piranha.AspNetCore.Identity.Controllers
         /// Default constructor.
         /// </summary>
         /// <param name="service">The identity service</param>
+        /// <param name="userManager">The current user manager</param>
+        /// <param name="localizer">The manager localizer</param>
         public UserController(IIdentityService service, IdentityErrorDescriber identityErrorDescriber, ManagerLocalizer localizer)
         {
             _service = service;
